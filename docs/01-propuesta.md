@@ -40,4 +40,4 @@ servicio ante la falla de una de sus instancias.
 - [x] Objetivos redactados
 - [x] Alcance delimitado
 - [x] Repositorio inicializado
-- [ ] Aprobación del profesor
+- [x] Aprobación del profesor
