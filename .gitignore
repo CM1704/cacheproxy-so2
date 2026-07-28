@@ -1,0 +1,25 @@
+# Go
+*.exe
+*.test
+*.out
+/proxy/bin/
+vendor/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Temporales
+experiments/resultados/*.tmp
+analysis/*.png
+setup/inventario-*.txt
+
+# Ofimática
+~$*.docx
+
+# Sistema
+.DS_Store
+*.swp
+.idea/
+.vscode/
