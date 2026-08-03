@@ -12,7 +12,7 @@ Universidad Latina de Costa Rica · Facultad de Ingenierías en TICs
 | Profesor | Carlos Andrés Méndez Rodríguez |
 | Tema del enunciado | (c) Proxy HTTP con cache |
 | Licencia | MIT |
-| Estado | Semana 11 — definición del tema y objetivos |
+| Estado | Semana 13 — revisión bibliográfica |
 
 ## Objetivo
 
@@ -56,6 +56,11 @@ servicio ante la falla de una de sus instancias.
 Se cambian en `.env` y en ningún otro archivo. Los servicios internos
 (proxy-a, proxy-b, valkey, origin) no publican puertos al host.
 
+## Puesta en marcha
+
+    docker compose up -d --build
+    curl -x http://localhost:18080 -sI http://origin/
+
 ## Estructura
 
 | Ruta | Contenido |
@@ -71,9 +76,9 @@ Se cambian en `.env` y en ningún otro archivo. Los servicios internos
 
 | Semana | Etiqueta | Estado |
 |---|---|---|
-| 11 · Tema y objetivos | `v0.1-semana11` | En curso |
-| 12 · Planificación y metodología | `v0.2-semana12` | Pendiente |
-| 13 · Revisión bibliográfica | `v0.3-semana13` | Pendiente |
+| 11 · Tema y objetivos | `v0.1-semana11` | Completado |
+| 12 · Planificación y metodología | `v0.2-semana12` | Completado |
+| 13 · Revisión bibliográfica | `v0.3-semana13` | En proceso |
 | 14 · Desarrollo y resultados | `v0.9-semana14` | Pendiente |
 | 15 · Entrega final | `v1.0.0` | Pendiente |
 
