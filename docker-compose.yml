@@ -1,0 +1,22 @@
+services:
+  origin:
+    image: nginx:alpine
+    container_name: cp-origin
+    volumes:
+      - ./deploy/origin/html:/usr/share/nginx/html:ro
+    networks: [cpnet]
+
+  proxy:
+    build: ./proxy
+    container_name: cp-proxy
+    environment:
+      PROXY_ADDR: ":8080"
+      NODO: "proxy-a"
+    ports:
+      - "${PUERTO_PROXY}:8080"
+    depends_on: [origin]
+    networks: [cpnet]
+
+networks:
+  cpnet:
+    driver: bridge
