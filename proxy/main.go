@@ -1,12 +1,14 @@
 // CacheProxy — proxy HTTP con cache, concurrente y de alta disponibilidad.
 // Proyecto de Investigacion, BISOF 18 Sistemas Operativos II.
 //
-// Semana 12: version minima funcional. Acepta conexiones en un socket TCP
-// propio, reenvia la peticion al servidor de origen sobre otro socket TCP y
-// devuelve la respuesta al cliente. Todavia sin cache (Semana 13).
+// Semana 13: se incorpora la cache en memoria con reemplazo por uso menos
+// reciente y expiracion por tiempo de vida. Antes de salir al origen, el
+// proxy consulta el almacen; si la respuesta esta presente y sigue fresca,
+// la devuelve sin abrir conexion saliente.
 package main
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log"
@@ -14,18 +16,28 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/CM1704/cacheproxy-so2/proxy/cache"
 )
 
 // conexiones cuenta las conexiones aceptadas desde el arranque.
 // Se usa atomic porque varias goroutines la incrementan a la vez.
-var conexiones int64
+var (
+	conexiones int64
+	almacen    *cache.LRU
+)
 
 func main() {
 	addr := getenv("PROXY_ADDR", ":8080")
 	nodo := getenv("NODO", "proxy")
+	capacidad := getenvInt("CACHE_MAX_ENTRADAS", 1000)
+	ttl := time.Duration(getenvInt("CACHE_TTL_SEGUNDOS", 60)) * time.Second
+
+	almacen = cache.NuevaLRU(capacidad, ttl)
 
 	// --- Socket de escucha ---
 	// net.Listen realiza socket(), bind() y listen() del sistema operativo.
@@ -34,10 +46,12 @@ func main() {
 		log.Fatalf("[%s] no se pudo abrir el socket de escucha: %v", nodo, err)
 	}
 	log.Printf("[%s] escuchando en %s", nodo, addr)
+	log.Printf("[%s] cache: capacidad=%d ttl=%v", nodo, capacidad, ttl)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", salud)  // comprobacion para HAProxy (Semana 14)
-	mux.HandleFunc("/", manejar(nodo)) // todo lo demas se reenvia
+	mux.HandleFunc("/healthz", salud)       // comprobacion para HAProxy
+	mux.HandleFunc("/stats", estadisticas)  // diagnostico de la cache
+	mux.HandleFunc("/", manejar(nodo, ttl)) // todo lo demas se reenvia
 
 	srv := &http.Server{
 		Handler:           mux,
@@ -83,7 +97,7 @@ var transporte = &http.Transport{
 
 // manejar devuelve el manejador principal. Cada peticion entrante se atiende
 // en su propia goroutine, creada por el servidor HTTP de la biblioteca.
-func manejar(nodo string) http.HandlerFunc {
+func manejar(nodo string, ttlPorOmision time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		n := atomic.AddInt64(&conexiones, 1)
 
@@ -102,8 +116,30 @@ func manejar(nodo string) http.HandlerFunc {
 		}
 
 		inicio := time.Now()
+		clave := cache.Clave(r.Method, r.URL.String())
 		log.Printf("[%s] #%d %s %s", nodo, n, r.Method, r.URL)
 
+		// --- Consulta a la cache ---
+		if ent, ok := almacen.Obtener(clave); ok {
+			for k, vs := range ent.Cabeceras {
+				for _, v := range vs {
+					w.Header().Add(k, v)
+				}
+			}
+			edad := int(ent.Edad().Seconds())
+			w.Header().Set("Age", strconv.Itoa(edad))
+			w.Header().Set("X-Cache", "HIT")
+			w.Header().Set("X-Proxy-Nodo", nodo)
+			w.WriteHeader(ent.Estado)
+			w.Write(ent.Cuerpo)
+
+			log.Printf("[%s] #%d HIT %d %d bytes edad=%ds en %v",
+				nodo, n, ent.Estado, len(ent.Cuerpo), edad,
+				time.Since(inicio).Round(time.Microsecond))
+			return
+		}
+
+		// --- Fallo: se acude al servidor de origen ---
 		salida, err := http.NewRequestWithContext(
 			r.Context(), r.Method, r.URL.String(), r.Body)
 		if err != nil {
@@ -121,14 +157,41 @@ func manejar(nodo string) http.HandlerFunc {
 		}
 		defer resp.Body.Close()
 
-		copiarCabeceras(w.Header(), resp.Header)
-		w.Header().Set("X-Cache", "MISS") // sin cache todavia: siempre MISS
+		cuerpo, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("[%s] #%d error al leer la respuesta: %v", nodo, n, err)
+			http.Error(w, "respuesta incompleta del origen", http.StatusBadGateway)
+			return
+		}
+
+		// --- Decision de almacenamiento (RFC 9111) ---
+		respParaPolitica := *resp
+		respParaPolitica.Body = io.NopCloser(bytes.NewReader(cuerpo))
+		d := cache.Almacenable(r, &respParaPolitica, ttlPorOmision)
+
+		cabecerasLimpias := http.Header{}
+		copiarCabeceras(cabecerasLimpias, resp.Header)
+
+		if d.Almacenable {
+			almacen.Guardar(clave, resp.StatusCode, cabecerasLimpias.Clone(), cuerpo, d.TTL)
+			log.Printf("[%s] #%d almacenada (ttl=%v)", nodo, n, d.TTL)
+		} else {
+			log.Printf("[%s] #%d no almacenada: %s", nodo, n, d.Motivo)
+		}
+
+		for k, vs := range cabecerasLimpias {
+			for _, v := range vs {
+				w.Header().Add(k, v)
+			}
+		}
+		w.Header().Set("X-Cache", "MISS")
 		w.Header().Set("X-Proxy-Nodo", nodo)
 		w.WriteHeader(resp.StatusCode)
+		w.Write(cuerpo)
 
-		bytes, _ := io.Copy(w, resp.Body)
-		log.Printf("[%s] #%d %d %d bytes en %v",
-			nodo, n, resp.StatusCode, bytes, time.Since(inicio).Round(time.Millisecond))
+		log.Printf("[%s] #%d MISS %d %d bytes en %v",
+			nodo, n, resp.StatusCode, len(cuerpo),
+			time.Since(inicio).Round(time.Millisecond))
 	}
 }
 
@@ -137,6 +200,22 @@ func salud(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, "ok\n")
+}
+
+// estadisticas expone los contadores de la cache para los experimentos.
+func estadisticas(w http.ResponseWriter, r *http.Request) {
+	s := almacen.Estadisticas()
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	io.WriteString(w, "{"+
+		"\"aciertos\":"+strconv.FormatInt(s.Aciertos, 10)+","+
+		"\"fallos\":"+strconv.FormatInt(s.Fallos, 10)+","+
+		"\"desalojos\":"+strconv.FormatInt(s.Desalojos, 10)+","+
+		"\"vencidas\":"+strconv.FormatInt(s.Vencidas, 10)+","+
+		"\"entradas\":"+strconv.Itoa(s.Entradas)+","+
+		"\"capacidad\":"+strconv.Itoa(s.Capacidad)+","+
+		"\"tasa_aciertos\":"+strconv.FormatFloat(s.TasaAciertos(), 'f', 4, 64)+
+		"}\n")
 }
 
 // saltoASalto son las cabeceras cuya validez se limita a una unica conexion.
@@ -167,6 +246,15 @@ func copiarCabeceras(destino, origen http.Header) {
 func getenv(clave, porDefecto string) string {
 	if v := os.Getenv(clave); v != "" {
 		return v
+	}
+	return porDefecto
+}
+
+func getenvInt(clave string, porDefecto int) int {
+	if v := os.Getenv(clave); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
 	}
 	return porDefecto
 }

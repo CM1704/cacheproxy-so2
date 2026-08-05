@@ -12,7 +12,7 @@ Universidad Latina de Costa Rica · Facultad de Ingenierías en TICs
 | Profesor | Carlos Andrés Méndez Rodríguez |
 | Tema del enunciado | (c) Proxy HTTP con cache |
 | Licencia | MIT |
-| Estado | Semana 13 — revisión bibliográfica |
+| Estado | Semana 13 — revisión bibliográfica y caché LRU |
 
 ## Objetivo
 
