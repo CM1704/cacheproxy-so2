@@ -2,19 +2,58 @@ services:
   origin:
     image: nginx:alpine
     container_name: cp-origin
+    cap_add: [NET_ADMIN]
     volumes:
       - ./deploy/origin/html:/usr/share/nginx/html:ro
     networks: [cpnet]
 
-  proxy:
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: cp-valkey
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    networks: [cpnet]
+
+  proxy-a:
     build: ./proxy
-    container_name: cp-proxy
+    container_name: cp-proxy-a
     environment:
       PROXY_ADDR: ":8080"
       NODO: "proxy-a"
+      VALKEY_ADDR: "valkey:6379"
+      DOMINIOS_PERMITIDOS: "origin"
+      CACHE_MAX_ENTRADAS: "${CACHE_MAX_ENTRADAS}"
+      CACHE_TTL_SEGUNDOS: "${CACHE_TTL_SEGUNDOS}"
+    depends_on: [origin, valkey]
+    networks: [cpnet]
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 256M}
+
+  proxy-b:
+    build: ./proxy
+    container_name: cp-proxy-b
+    environment:
+      PROXY_ADDR: ":8080"
+      NODO: "proxy-b"
+      VALKEY_ADDR: "valkey:6379"
+      DOMINIOS_PERMITIDOS: "origin"
+      CACHE_MAX_ENTRADAS: "${CACHE_MAX_ENTRADAS}"
+      CACHE_TTL_SEGUNDOS: "${CACHE_TTL_SEGUNDOS}"
+    depends_on: [origin, valkey]
+    networks: [cpnet]
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 256M}
+
+  haproxy:
+    image: haproxy:alpine
+    container_name: cp-haproxy
+    volumes:
+      - ./deploy/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "${PUERTO_PROXY}:8080"
-    depends_on: [origin]
+      - "${PUERTO_STATS}:8404"
+    depends_on: [proxy-a, proxy-b]
     networks: [cpnet]
 
 networks:
