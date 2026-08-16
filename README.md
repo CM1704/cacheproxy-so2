@@ -12,7 +12,7 @@ Universidad Latina de Costa Rica · Facultad de Ingenierías en TICs
 | Profesor | Carlos Andrés Méndez Rodríguez |
 | Tema del enunciado | (c) Proxy HTTP con cache |
 | Licencia | MIT |
-| Estado | Semana 14 — desarrollo y análisis de resultados |
+| Estado | Completado — versión 1.0.0 |
 
 ## Objetivo
 
@@ -169,8 +169,8 @@ versionados en `experiments/resultados/`.
 | 11 · Tema y objetivos | `v0.1-semana11` | Completado |
 | 12 · Planificación y metodología | `v0.2-semana12` | Completado |
 | 13 · Revisión bibliográfica | `v0.3-semana13` | Completado |
-| 14 · Desarrollo y resultados | `v0.9-semana14` | En proceso |
-| 15 · Entrega final | `v1.0.0` | Pendiente |
+| 14 · Desarrollo y resultados | `v0.9-semana14` | Completado |
+| 15 · Entrega final | `v1.0.0` | Completado |
 
 ## Licencia
 
