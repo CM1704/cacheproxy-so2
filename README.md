@@ -99,7 +99,7 @@ Variables en `.env` y en `docker-compose.yml`:
 | `PUERTO_PROXY` | 18080 | Puerto publicado de HAProxy |
 | `PUERTO_STATS` | 18404 | Puerto del panel de estadísticas |
 | `CACHE_MAX_ENTRADAS` | 1000 | Capacidad de la caché L1 |
-| `CACHE_TTL_SEGUNDOS` | 60 | Tiempo de vida por omisión |
+| `CACHE_TTL_SEGUNDOS` | 600 | Tiempo de vida por omisión |
 | `VALKEY_ADDR` | valkey:6379 | Almacén compartido; vacío desactiva L2 |
 | `DOMINIOS_PERMITIDOS` | origin | Lista blanca separada por coma |
 | `MAX_RESPUESTA_KB` | 5120 | Tamaño máximo de respuesta almacenable |
