@@ -68,3 +68,21 @@ salud para el balanceador de carga y registra cada conexión saliente.
 
 Pendiente: caché con reemplazo y expiración (Semana 13); túnel CONNECT, caché
 compartida, alta disponibilidad y controles de seguridad (Semana 14).
+
+## Adenda · Precisiones metodológicas incorporadas durante la ejecución
+
+**Catálogo de recursos en E3.** Los doscientos recursos del catálogo se
+distinguen mediante cadenas de consulta sobre un mismo archivo. La clave de caché
+es la combinación del método y del identificador completo del recurso, de modo que
+cada valor produce una entrada distinta con contenido idéntico. Esto aísla el
+efecto de la capacidad de la caché del efecto del tamaño de los objetos.
+
+**Semilla fija en la generación de la carga.** La secuencia de peticiones con
+distribución de tipo Zipf se genera con semilla constante, de modo que sea
+idéntica entre condiciones experimentales y las diferencias observadas resulten
+atribuibles a la variable manipulada.
+
+**Calentamiento dirigido en E6.** Con reparto por turnos, ambas instancias se
+calientan parcialmente y el efecto del segundo nivel queda enmascarado. El
+escenario detiene una instancia durante el calentamiento para concentrar las
+entradas en la otra, e invierte el estado antes de medir.

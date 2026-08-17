@@ -124,7 +124,11 @@ Variables en `.env` y en `docker-compose.yml`:
     ./experiments/scripts/e7-seguridad.sh          # instantáneo
     ./experiments/scripts/e1-acierto-vs-fallo.sh   # varios minutos
     ./experiments/scripts/e2-concurrencia.sh
+    ./experiments/scripts/e3-capacidad.sh
+    ./experiments/scripts/e4-latencia-origen.sh
     ./experiments/scripts/e5-falla.sh
+    ./experiments/scripts/e6-arranque-frio.sh
+    ./experiments/scripts/resumen.sh               # extrae las tablas
 
 | ID | Escenario | Variable manipulada |
 |---|---|---|
