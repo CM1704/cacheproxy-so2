@@ -1,4 +1,4 @@
 prueba,esperado,obtenido,resultado
-dominio fuera de la lista blanca,403,502,FALLA
+dominio fuera de la lista blanca,403,403,OK
 dominio autorizado,200,200,OK
-peticion con Authorization no se cachea,MISS,HIT,FALLA
+peticion con Authorization no se cachea,MISS,MISS,OK

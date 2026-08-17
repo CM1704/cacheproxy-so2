@@ -1,0 +1,3 @@
+configuracion,tasa_aciertos,aciertos,fallos
+con cache compartida,1.0000,120,0
+solo cache local,0.0000,0,120

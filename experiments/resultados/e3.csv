@@ -1,0 +1,4 @@
+entradas,tasa_aciertos,desalojos,aciertos,fallos,peticiones
+10,0.7125,124,570,230,800
+100,0.7125,0,570,230,800
+1000,0.7125,0,570,230,800
